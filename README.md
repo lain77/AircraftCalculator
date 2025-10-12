@@ -36,15 +36,6 @@ Install required libraries:
 pip install pandas pillow
 
 
-aerial-simulator/
-│
-├─ img/                  # Aircraft images (e.g., f22.png, f35a.png) + demo.gif
-├─ simulator.py          # Main Python file
-├─ README.md             # This file
-
-
-python simulator.py
-
 📄 License
 
 This project is licensed under the MIT License
