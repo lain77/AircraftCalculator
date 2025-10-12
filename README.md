@@ -18,6 +18,34 @@ A Python-based **Aerial Simulator** with a **Tkinter GUI** to calculate mission 
 
 ---
 
+## 🎮 Usage Instructions
+
+1. **Select the country** of the aircraft
+2. **Choose a mission**
+3. **Select an aircraft** compatible with that mission
+4. Pick **weather** and **distance**
+5. Click **"Calculate Probability"**
+6. View **mission result**, **aircraft image**, and **statistics**
+
+---
+
+## ⚠️ Notes
+
+- Missing aircraft images in `img/` will display **"Image not found"**
+- Mission types **Reconnaissance** and **BVR Combat** use special calculations factoring **stealth, radar, RCS, range, speed, and maneuverability**
+- 
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a branch: `git checkout -b feature/new-feature`
+3. Commit your changes: `git commit -m 'Add new feature'`
+4. Push to the branch: `git push origin feature/new-feature`
+5. Open a Pull Request
+
+---
+
 ## 🛠️ Prerequisites
 
 - **Python 3.10+**
