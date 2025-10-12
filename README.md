@@ -18,13 +18,6 @@ A Python-based **Aerial Simulator** with a **Tkinter GUI** to calculate mission 
 
 ---
 
-## 🎬 Demo
-
-![Simulator Demo](img/demo.gif)  
-*Example of the simulator interface showing selection of aircraft, mission, weather, and probability calculation.*
-
----
-
 ## 🛠️ Prerequisites
 
 - **Python 3.10+**
