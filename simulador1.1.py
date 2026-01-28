@@ -229,7 +229,7 @@ def calcular_probabilidade_bvr(stats, clima="Bom", distancia="Longa"):
 
 janela = tk.Tk()
 janela.title("Simulador Aéreo")
-janela.geometry("1000x400")
+janela.geometry("1000x500")
 janela.configure(bg="#1e1e1e")
 
 fundo_cor = "#1e1e1e"
