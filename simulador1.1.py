@@ -1,387 +1,389 @@
+import subprocess
+import sys
+
+
+def install_dependencies():
+    packages = {
+        "pandas": "pandas",
+        "PIL": "pillow",
+        "matplotlib": "matplotlib",
+        "kagglehub": "kagglehub",
+    }
+    for module, pip_package in packages.items():
+        try:
+            __import__(module)
+        except ImportError:
+            print(f"Installing '{pip_package}'...")
+            try:
+                subprocess.check_call(
+                    [sys.executable, "-m", "pip", "install", pip_package]
+                )
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to install {pip_package}: {e}")
+                sys.exit(1)
+
+
+install_dependencies()
+
+import math
+from pathlib import Path
+
 import tkinter as tk
+from tkinter import ttk
+
 import pandas as pd
-from itertools import product
-from PIL import Image, ImageTk  
+from PIL import Image, ImageTk
 
-paises = {
-    "EUA": ["F-22", "F-35A", "F-15E", "F-15C", "F-15EX", "F-16C", "F/A-18E", "F/A-18G", "A-10C", "U-2"],
-    "Rússia": ["Su-57", "Su-35S", "Su-30SM", "Su-34", "MiG-29SMT", "MiG-31BM"],
-    "China": ["J-20", "J-16", "J-10C", "FC-31", "Y-20", "JH-7"],
-    "França": ["Rafale", "Mirage 2000D", "Mirage 2000C", "Tornado ECR"],
-    "Reino Unido": ["Typhoon", "F-35B", "F-35C", "Tornado GR4"],
-    "Suécia": ["Gripen C", "Gripen E", "Draken", "Viggen", "JAS 39D"],
-    "Japão": ["F-2", "F-15J", "F-35A", "E-2C Hawkeye"]
-}
+import matplotlib
+matplotlib.use("TkAgg")
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import os
 
-climas = ["Bom", "Nublado", "Chuva"]
-distancias = ["Curta", "Média", "Longa"]
-tipoMissao = ["Bombardeio estratégico", "Reconhecimento estratégico", "Combate", "Defesa Aérea", "Interceptação", "Combate BVR", "Guerra eletrônica"]
+import combat_engine as ce
 
-missoes_por_aeronave = {
-    # EUA
-    "F-22": ["Combate", "Defesa Aérea", "Interceptação", "Combate BVR"],
-    "F-35A": ["Combate", "Defesa Aérea", "Interceptação", "Combate BVR", "Guerra eletrônica"],
-    "F-15E": ["Bombardeio estratégico", "Combate", "Combate BVR"],
-    "F-15C": ["Defesa Aérea", "Interceptação", "Combate BVR"],
-    "F-15EX": ["Defesa Aérea", "Interceptação", "Combate", "Combate BVR"],
-    "F-16C": ["Combate", "Defesa Aérea", "Combate BVR"],
-    "F/A-18E": ["Combate", "Defesa Aérea", "Combate BVR"],
-    "F/A-18F": ["Combate", "Defesa Aérea", "Combate BVR"],
-    "F/A-18G": ["Guerra eletrônica", "Defesa Aérea"],
-    "A-10C": ["Combate", "Bombardeio estratégico"],
-    "U-2": ["Reconhecimento estratégico"],
+# ---------------------------------------------------------------------------
+# Theme
+# ---------------------------------------------------------------------------
+BG = "#12151c"
+PANEL = "#1b1f2a"
+PANEL_LIGHT = "#252a38"
+ACCENT = "#4ea1ff"
+ACCENT_DIM = "#2d6ab0"
+TEXT = "#e6e9f0"
+TEXT_DIM = "#8b93a7"
+GOOD = "#46d369"
+WARN = "#f5a623"
+BAD = "#e0524f"
+FONT = "Segoe UI" if sys.platform == "win32" else "DejaVu Sans"
 
-    # Rússia
-    "Su-57": ["Combate", "Defesa Aérea", "Interceptação", "Combate BVR"],
-    "Su-35S": ["Combate", "Defesa Aérea", "Combate BVR"],
-    "Su-30SM": ["Combate", "Defesa Aérea", "Combate BVR"],
-    "Su-34": ["Bombardeio estratégico", "Combate"],
-    "MiG-29SMT": ["Combate", "Defesa Aérea"],
-    "MiG-31BM": ["Interceptação", "Combate BVR"],
-
-    # China
-    "J-20": ["Combate", "Defesa Aérea", "Interceptação", "Combate BVR"],
-    "J-16": ["Combate", "Defesa Aérea", "Bombardeio estratégico", "Combate BVR"],
-    "J-10C": ["Combate", "Defesa Aérea", "Combate BVR"],
-    "FC-31": ["Combate", "Interceptação", "Combate BVR"],
-    "JH-7": ["Bombardeio estratégico", "Combate"],
-
-    # França
-    "Rafale": ["Combate", "Defesa Aérea", "Bombardeio estratégico", "Combate BVR", "Guerra eletrônica"],
-    "Mirage 2000D": ["Bombardeio estratégico", "Combate BVR"],
-    "Mirage 2000C": ["Defesa Aérea", "Interceptação"],
-    "Tornado ECR": ["Bombardeio estratégico", "Guerra eletrônica"],
-
-    # Reino Unido
-    "Typhoon": ["Combate", "Defesa Aérea", "Combate BVR"],
-    "F-35B": ["Combate", "Interceptação", "Guerra eletrônica", "Combate BVR"],
-    "F-35C": ["Combate", "Interceptação", "Guerra eletrônica", "Combate BVR"],
-    "Tornado GR4": ["Bombardeio estratégico"],
-
-    # Suécia
-    "Gripen C": ["Combate", "Defesa Aérea", "Combate BVR"],
-    "Gripen E": ["Combate", "Defesa Aérea", "Combate BVR", "Guerra eletrônica"],
-    "Draken": ["Combate"],
-    "Viggen": ["Bombardeio estratégico", "Combate"],
-    "JAS 39D": ["Combate", "Defesa Aérea", "Combate BVR"],
-
-    # Japão
-    "F-2": ["Combate", "Defesa Aérea", "Combate BVR"],
-    "F-15J": ["Defesa Aérea", "Interceptação", "Combate BVR"],
-    "E-2C Hawkeye": ["Reconhecimento estratégico"]
-}
-
-stats_aeronaves = {
-    "F-22": {"Velocidade Máx": 2414, "Alcance": 2960, "Stealth": 1.0, "Manobrabilidade": 1.0, "Radar": 9.0, "RCS": 0.0001},
-    "F-35A": {"Velocidade Máx": 1930, "Alcance": 2220, "Stealth": 0.9, "Manobrabilidade": 0.8, "Radar": 8.5, "RCS": 0.001},
-    "F-15E": {"Velocidade Máx": 2655, "Alcance": 1271, "Stealth": 0.1, "Manobrabilidade": 0.6, "Radar": 8.0, "RCS": 5.0},
-    "F-15C": {"Velocidade Máx": 2655, "Alcance": 1950, "Stealth": 0.0, "Manobrabilidade": 0.65, "Radar": 7.5, "RCS": 10.0},
-    "F-15EX": {"Velocidade Máx": 2655, "Alcance": 2400, "Stealth": 0.2, "Manobrabilidade": 0.7, "Radar": 8.5, "RCS": 4.0},
-    "F-16C": {"Velocidade Máx": 2120, "Alcance": 4220, "Stealth": 0.0, "Manobrabilidade": 0.85, "Radar": 7.0, "RCS": 5.0},
-    "F/A-18E": {"Velocidade Máx": 1915, "Alcance": 2346, "Stealth": 0.1, "Manobrabilidade": 0.8, "Radar": 7.8, "RCS": 1.0},
-    "F/A-18F": {"Velocidade Máx": 1915, "Alcance": 2346, "Stealth": 0.1, "Manobrabilidade": 0.8, "Radar": 7.8, "RCS": 1.0},
-    "A-10C": {"Velocidade Máx": 706, "Alcance": 1300, "Stealth": 0.0, "Manobrabilidade": 0.4, "Radar": 4.0, "RCS": 10.0},
-    "U-2": {"Velocidade Máx": 805, "Alcance": 10300, "Stealth": 0.1, "Manobrabilidade": 0.3, "Radar": 6.5, "RCS": 30.0},
-    "Su-57": {"Velocidade Máx": 2600, "Alcance": 3500, "Stealth": 0.8, "Manobrabilidade": 0.95, "Radar": 8.0, "RCS": 0.01},
-    "Su-35S": {"Velocidade Máx": 2778, "Alcance": 3600, "Stealth": 0.2, "Manobrabilidade": 0.9, "Radar": 8.0, "RCS": 4.0},
-    "Su-30SM": {"Velocidade Máx": 2120, "Alcance": 3000, "Stealth": 0.1, "Manobrabilidade": 0.85, "Radar": 7.5, "RCS": 5.0},
-    "Su-34": {"Velocidade Máx": 1900, "Alcance": 4500, "Stealth": 0.1, "Manobrabilidade": 0.6, "Radar": 6.0, "RCS": 15.0},
-    "MiG-29SMT": {"Velocidade Máx": 2400, "Alcance": 2100, "Stealth": 0.0, "Manobrabilidade": 0.85, "Radar": 6.8, "RCS": 5.0},
-    "MiG-31BM": {"Velocidade Máx": 3000, "Alcance": 1450, "Stealth": 0.0, "Manobrabilidade": 0.5, "Radar": 9.0, "RCS": 15.0},
-    "J-20": {"Velocidade Máx": 2100, "Alcance": 5500, "Stealth": 0.9, "Manobrabilidade": 0.85, "Radar": 8.5, "RCS": 0.05},
-    "J-16": {"Velocidade Máx": 2450, "Alcance": 3900, "Stealth": 0.3, "Manobrabilidade": 0.75, "Radar": 7.5, "RCS": 6.0},
-    "J-10C": {"Velocidade Máx": 2300, "Alcance": 2940, "Stealth": 0.2, "Manobrabilidade": 0.8, "Radar": 7.0, "RCS": 3.0},
-    "FC-31": {"Velocidade Máx": 2200, "Alcance": 2000, "Stealth": 0.8, "Manobrabilidade": 0.85, "Radar": 8.0, "RCS": 0.3},
-    "JH-7": {"Velocidade Máx": 1800, "Alcance": 3700, "Stealth": 0.1, "Manobrabilidade": 0.6, "Radar": 6.0, "RCS": 8.0},
-    "Rafale": {"Velocidade Máx": 2130, "Alcance": 3700, "Stealth": 0.2, "Manobrabilidade": 0.85, "Radar": 7.5, "RCS": 1.0},
-    "Mirage 2000D": {"Velocidade Máx": 2338, "Alcance": 1550, "Stealth": 0.1, "Manobrabilidade": 0.7, "Radar": 6.5, "RCS": 2.0},
-    "Mirage 2000C": {"Velocidade Máx": 2338, "Alcance": 1550, "Stealth": 0.1, "Manobrabilidade": 0.7, "Radar": 6.5, "RCS": 2.0},
-    "Tornado ECR": {"Velocidade Máx": 2400, "Alcance": 1400, "Stealth": 0.1, "Manobrabilidade": 0.5, "Radar": 6.0, "RCS": 6.0},
-    "Typhoon": {"Velocidade Máx": 2495, "Alcance": 2900, "Stealth": 0.2, "Manobrabilidade": 0.9, "Radar": 8.0, "RCS": 1.5},
-    "F-35B": {"Velocidade Máx": 1930, "Alcance": 1670, "Stealth": 0.9, "Manobrabilidade": 0.75, "Radar": 8.5, "RCS": 0.001},
-    "F-35C": {"Velocidade Máx": 1930, "Alcance": 2520, "Stealth": 0.9, "Manobrabilidade": 0.75, "Radar": 8.5, "RCS": 0.001},
-    "Tornado GR4": {"Velocidade Máx": 2338, "Alcance": 1390, "Stealth": 0.1, "Manobrabilidade": 0.5, "Radar": 6.0, "RCS": 6.0},
-    "Gripen C": {"Velocidade Máx": 2470, "Alcance": 3200, "Stealth": 0.1, "Manobrabilidade": 0.85, "Radar": 7.2, "RCS": 1.0},
-    "Gripen E": {"Velocidade Máx": 2470, "Alcance": 4000, "Stealth": 0.2, "Manobrabilidade": 0.9, "Radar": 8.0, "RCS": 0.8},
-    "Draken": {"Velocidade Máx": 2124, "Alcance": 1200, "Stealth": 0.0, "Manobrabilidade": 0.6, "Radar": 4.5, "RCS": 6.0},
-    "Viggen": {"Velocidade Máx": 2230, "Alcance": 2000, "Stealth": 0.0, "Manobrabilidade": 0.7, "Radar": 5.5, "RCS": 6.0},
-    "JAS 39D": {"Velocidade Máx": 2470, "Alcance": 3200, "Stealth": 0.1, "Manobrabilidade": 0.85, "Radar": 7.2, "RCS": 1.0},
-    "F-2": {"Velocidade Máx": 2100, "Alcance": 3000, "Stealth": 0.2, "Manobrabilidade": 0.8, "Radar": 7.0, "RCS": 2.0},
-    "F-15J": {"Velocidade Máx": 2655, "Alcance": 3000, "Stealth": 0.0, "Manobrabilidade": 0.7, "Radar": 7.5, "RCS": 5.0},
-    "E-2C Hawkeye": {"Velocidade Máx": 648, "Alcance": 2700, "Stealth": 0.0, "Manobrabilidade": 0.2, "Radar": 9.0, "RCS": 20.0}
-}
-
-pesos_por_missao = {
-    "Bombardeio estratégico": {
-        "Velocidade": 0.2,
-        "Alcance": 0.4,
-        "Stealth": 0.3,
-        "Manobrabilidade": 0.1
-    },
-    "Reconhecimento estratégico": {
-        "Velocidade": 0.3,
-        "Alcance": 0.4,
-        "Stealth": 0.3,
-        "Manobrabilidade": 0.0
-    },
-    "Combate": {
-        "Velocidade": 0.25,
-        "Alcance": 0.2,
-        "Stealth": 0.25,
-        "Manobrabilidade": 0.3
-    },
-    "Defesa Aérea": {
-        "Velocidade": 0.3,
-        "Alcance": 0.2,
-        "Stealth": 0.2,
-        "Manobrabilidade": 0.3
-    },
-    "Interceptação": {
-        "Velocidade": 0.5,
-        "Alcance": 0.2,
-        "Stealth": 0.1,
-        "Manobrabilidade": 0.2
-    },
-    "Combate BVR": {
-        "Velocidade": 0.5,
-        "Alcance": 0.4,
-        "Stealth": 0.8,
-        "Manobrabilidade": 0.2
-    },
-    "Guerra eletrônica": {
-        "Velocidade": 0.6,
-        "Alcance": 0.7,
-        "Stealth": 0.65,
-        "Manobrabilidade": 0.2
-    }
-}
-
-def normalizar(valor, minimo, maximo):
-    return max(0, min(1, (valor - minimo) / (maximo - minimo)))
-
-def calcular_probabilidade(nome_aeronave, clima, distancia, missao):
-    if nome_aeronave not in stats_aeronaves:
-        return 0
-
-    pesos = pesos_por_missao.get(missao)
-    if pesos is None:
-        return 0
-
-    s = stats_aeronaves[nome_aeronave]
-    stealth = s["Stealth"]
-    alcance = normalizar(s["Alcance"], 500, 4000)
-    velocidade = normalizar(s["Velocidade Máx"], 900, 3000)
-    manobrab = s.get("Manobrabilidade", 0.5)
-
-    indice = (
-        stealth * pesos["Stealth"] +
-        alcance * pesos["Alcance"] +
-        velocidade * pesos["Velocidade"] +
-        manobrab * pesos["Manobrabilidade"]
-    )
-
-    penalidades_clima = {"Bom": 0.0, "Nublado": 0.1, "Chuva": 0.2}
-    penalidades_dist = {"Curta": 0.0, "Média": 0.1, "Longa": 0.2}
-    penalidade = penalidades_clima.get(clima, 0) + penalidades_dist.get(distancia, 0)
-
-    final = max(0, indice - penalidade)
-    return round(final * 100, 1)
-
-def calcular_probabilidade_reconhecimento(stats, clima, distancia):
-    stealth = stats["Stealth"]
-    alcance = normalizar(stats["Alcance"], 500, 4000)
-    manobrab = stats.get("Manobrabilidade", 0.5)
-    velocidade = normalizar(stats["Velocidade Máx"], 900, 3000)
-    penalidades_clima = {"Bom": 0.0, "Nublado": 0.1, "Chuva": 0.2}
-
-    coleta = stealth * alcance
-    nao_detectado = stealth * manobrab * (1 - penalidades_clima.get(clima, 0))
-    retorno = alcance * velocidade * manobrab
-
-    prob_final = 0.4 * coleta + 0.4 * nao_detectado + 0.2 * retorno
-
-    return {
-        "final": round(prob_final * 100, 1),
-        "coleta": round(coleta * 100, 1),
-        "discricao": round(nao_detectado * 100, 1),
-        "retorno": round(retorno * 100, 1)
-    }
-
-def calcular_probabilidade_bvr(stats, clima="Bom", distancia="Longa"):
-    rcs = stats["RCS"]
-    radar = stats["Radar"]
-
-    visibilidade_relativa = rcs / radar 
-
-    min_vis = 0.00001 / 500  
-    max_vis = 25 / 150      
-
-    indice_base = 1 - normalizar(visibilidade_relativa, min_vis, max_vis)
-
-    penalidades_clima = {"Bom": 0.0, "Nublado": 0.1, "Chuva": 0.2}
-    penalidades_dist = {"Curta": 0.0, "Média": 0.05, "Longa": 0.1}
-
-    penalidade = penalidades_clima.get(clima, 0) + penalidades_dist.get(distancia, 0)
-
-    final = max(0, indice_base - penalidade)
-    return round(final * 100, 1)
+BASE_DIR = Path(__file__).parent
+LOCAL_CSV = BASE_DIR / "fighter_aircraft_dataset_v10.csv"
+IMG_DIR = BASE_DIR / "img"
+KAGGLE_SLUG = "oxcartcorporation/military-aircraft-dataset"
 
 
-janela = tk.Tk()
-janela.title("Simulador Aéreo")
-janela.geometry("1000x500")
-janela.configure(bg="#1e1e1e")
-
-fundo_cor = "#1e1e1e"
-texto_cor = "white"
-
-frame_esquerda = tk.Frame(janela, bg=fundo_cor, width=300)
-frame_centro   = tk.Frame(janela, bg=fundo_cor, width=400)
-frame_direita  = tk.Frame(janela, bg=fundo_cor, width=300)
-
-frame_esquerda.pack(side="left", fill="both", expand=False, padx=20, pady=20)
-frame_centro.pack(side="left", fill="both", expand=True, padx=20, pady=20)
-frame_direita.pack(side="left", fill="both", expand=False, padx=20, pady=20)
-
-pais_var = tk.StringVar(value="EUA")
-aeronave_var = tk.StringVar()
-clima_var = tk.StringVar(value="Bom")
-distancia_var = tk.StringVar(value="Curta")
-missao_var = tk.StringVar()
-missao_var.set(tipoMissao[0])
-
-tk.Label(frame_esquerda, text="País:", fg=texto_cor, bg=fundo_cor, font=("Arial", 12)).pack(pady=5)
-menu_pais = tk.OptionMenu(frame_esquerda, pais_var, *paises.keys())
-menu_pais.config(font=("Arial", 14), width=22)
-menu_pais.pack()
-
-tk.Label(frame_esquerda, text="Missão:", fg=texto_cor, bg=fundo_cor, font=("Arial", 12)).pack(pady=5)
-menu_missao = tk.OptionMenu(frame_esquerda, missao_var, *tipoMissao)
-menu_missao.config(font=("Arial", 14), width=22)
-menu_missao.pack()
-
-tk.Label(frame_esquerda, text="Aeronave:", fg=texto_cor, bg=fundo_cor, font=("Arial", 12)).pack(pady=5)
-menu_aeronave = tk.OptionMenu(frame_esquerda, aeronave_var, "")
-menu_aeronave.config(font=("Arial", 12), width=20)
-menu_aeronave.pack()
-
-tk.Label(frame_esquerda, text="Clima:", fg=texto_cor, bg=fundo_cor, font=("Arial", 12)).pack(pady=5)
-menu_clima = tk.OptionMenu(frame_esquerda, clima_var, *climas)
-menu_clima.config(font=("Arial", 12), width=20)
-menu_clima.pack()
-
-tk.Label(frame_esquerda, text="Distância:", fg=texto_cor, bg=fundo_cor, font=("Arial", 12)).pack(pady=5)
-menu_distancia = tk.OptionMenu(frame_esquerda, distancia_var, *distancias)
-menu_distancia.config(font=("Arial", 12), width=20)
-menu_distancia.pack()
-
-
-def calcular():
-    nome = aeronave_var.get()
-    clima = clima_var.get()
-    distancia = distancia_var.get()
-    missao = missao_var.get()
-
-    if nome not in stats_aeronaves:
-        resultado_label.config(text="Aeronave não encontrada.")
-        return
-
-    stats = stats_aeronaves[nome]
-
-    if missao == "Combate BVR":
-        prob = calcular_probabilidade_bvr(stats, clima=clima, distancia=distancia)
-    elif missao == "Reconhecimento estratégico":
-        resultado = calcular_probabilidade_reconhecimento(stats, clima, distancia)
-        resultado_label.config(
-            text=(
-                f"Probabilidade para missão '{missao}': {resultado['final']}%\n\n"
-                f"- Coleta de dados: {resultado['coleta']}%\n"
-                f"- Não ser detectado: {resultado['discricao']}%\n"
-                f"- Retorno seguro: {resultado['retorno']}%"
-            )
-        )
-    else:
-        prob = calcular_probabilidade(nome, clima, distancia, missao)
-
-    resultado_label.config(
-        text=f"Probabilidade para missão '{missao}': {prob}%"
-    )
-
-    atualizar_imagem()
-
-def atualizar_imagem():
-    nome = aeronave_var.get().lower().replace("-", "").replace(" ", "").replace("/", "")
-    caminho = f"img/{nome}.png"
+def resolve_csv_path():
     try:
-        img = Image.open(caminho)
+        print("Attempting Kaggle download...")
+        for dirname, _, filenames in os.walk('/kaggle/input'):
+            for filename in filenames:
+                print(os.path.join(dirname, filename))
+                df = pd.read_csv('/kaggle/input/datasets/oxcartcorporation/military-aircraft-dataset/fighter_aircraft_dataset_v10.csv')
+    except Exception as e:
+        print(f"Kaggle unavailable ({e}); using local CSV.")
+    if LOCAL_CSV.exists():
+        return LOCAL_CSV
+    print("ERROR: no data source available.")
+    sys.exit(1)
 
-        max_width, max_height = 300, 150
 
-        img.thumbnail((max_width, max_height), Image.LANCZOS)
-        
-        foto = ImageTk.PhotoImage(img)
-        imagem_label.configure(image=foto, text="") 
-        imagem_label.image = foto
-    except:
-        imagem_label.configure(image="", text="Imagem não encontrada", fg="red", bg=fundo_cor, font=("Arial", 12))
-    
-    nome_exibido = aeronave_var.get()
-    if nome_exibido in stats_aeronaves:
-        stats = stats_aeronaves[nome_exibido]
-        texto_stats = "\n".join([f"{chave}: {valor}" for chave, valor in stats.items()])
-        stats_label.config(text=texto_stats)
-    else:
-        stats_label.config(text="Estatísticas não disponíveis.")
+def stealth_from_rcs(rcs):
+    if rcs <= 0:
+        return 1.0
+    return max(0.0, min(1.0, 1 - (math.log10(max(rcs, 1e-6)) + 4) / 8.5))
 
-tk.Button(
-    frame_esquerda,
-    text="Calcular Probabilidade",
-    font=("Arial", 12),
-    width=22,
-    height=2,
-    command=calcular
-).pack(pady=20)
 
-imagem_label = tk.Label(frame_centro, bg=fundo_cor)
-imagem_label.pack(pady=20)
+def build_aircraft(row):
+    return {
+        "name": row["Aircraft"],
+        "country": row["Country"],
+        "generation": ce.parse_generation(row["Generation"]),
+        "rcs": row["RCS_m2"],
+        "radar": row["Radar_Score"] * 10,
+        "missile": row["Missile_Score"],
+        "ew": row["EW_Score"],
+        "maneuver": min(1.0, row["Missile_Score"] + (0.1 if row["Thrust_Vectoring"] == "Yes" else 0)),
+        "stealth": stealth_from_rcs(row["RCS_m2"]),
+        "range": row["Combat_Radius_km"],
+        "speed": row["Max_Speed_kmh"],
+        "ceiling": row["Service_Ceiling_m"],
+        "cost": row["Unit_Cost_M_USD"],
+        "cost_hour": row["Cost_per_Flight_Hour_USD"],
+        "role": row["Role"],
+    }
 
-stats_label = tk.Label(frame_centro, text="", fg="white", bg=fundo_cor, font=("Arial", 12), justify="left")
-stats_label.pack(pady=10)
 
-def atualizar_aeronaves(*args):
-    pais = pais_var.get()
-    missao = missao_var.get()
+CSV_PATH = resolve_csv_path()
+DF = pd.read_csv(CSV_PATH)
+AIRCRAFT = {row["Aircraft"]: build_aircraft(row) for _, row in DF.iterrows()}
+COUNTRIES = {}
+for ac in AIRCRAFT.values():
+    COUNTRIES.setdefault(ac["country"], []).append(ac["name"])
 
-    if not missao:
-        return  
+ROLE_TO_MISSIONS = {
+    "Air Superiority": ["Air Combat", "Air Defense", "Interception", "BVR Combat"],
+    "Interceptor": ["Interception", "BVR Combat", "Air Defense"],
+    "Multirole": ["Air Combat", "Air Defense", "Interception", "BVR Combat", "Electronic Warfare", "Strategic Reconnaissance"],
+}
+MISSION_TYPES = ["BVR Combat", "Air Combat", "Air Defense", "Interception", "Strategic Reconnaissance", "Electronic Warfare"]
+WEATHER_OPTIONS = ["Clear", "Cloudy", "Rain"]
+DISTANCE_OPTIONS = ["Short", "Medium", "Long"]
 
-    todas = paises[pais]
-    validas = [a for a in todas if a in missoes_por_aeronave and missao in missoes_por_aeronave[a]]
 
-    menu = menu_aeronave["menu"]
-    menu.delete(0, "end")
+def missions_for(name):
+    return ROLE_TO_MISSIONS.get(AIRCRAFT[name]["role"], [])
 
-    if not validas:
-        aeronave_var.set("")
-        menu.add_command(label="Nenhuma disponível", command=lambda: aeronave_var.set(""))
-        stats_label.config(text="Nenhuma aeronave compatível com essa missão.")
-        imagem_label.configure(image="", text="")
-        return
 
-    for aeronave in validas:
-        menu.add_command(label=aeronave, command=lambda value=aeronave: aeronave_var.set(value))
+def run_mission(attacker, defender, mission, weather, distance):
+    if mission == "BVR Combat":
+        return ce.p_bvr(attacker, defender, weather, distance)
+    if mission == "Air Combat":
+        return ce.p_air_combat(attacker, defender, weather, distance)
+    if mission == "Air Defense":
+        return ce.p_air_defense(attacker, defender, weather, distance)
+    if mission == "Interception":
+        return ce.p_interception(attacker, defender, weather, distance)
+    if mission == "Electronic Warfare":
+        return ce.p_electronic_warfare(attacker, defender, weather, distance)
+    if mission == "Strategic Reconnaissance":
+        return ce.p_recon(attacker, weather, distance)
+    return {"final": 0.0}
 
-    aeronave_var.set(validas[0])
-    atualizar_imagem()
 
-aeronave_var.trace("w", lambda *args: atualizar_imagem())
-pais_var.trace("w", atualizar_aeronaves)
-atualizar_aeronaves()
+class SimulatorApp:
+    def __init__(self, root):
+        self.root = root
+        root.title("OXCART - Air Combat Simulator")
+        root.geometry("1180x720")
+        root.configure(bg=BG)
+        root.minsize(1080, 640)
+        self._setup_style()
 
-tk.Label(frame_direita, text="Resultado da Missão:", fg=texto_cor, bg=fundo_cor, font=("Arial", 14)).pack(pady=10)
-resultado_label = tk.Label(frame_direita, text="Aguardando simulação...", fg="lime", bg=fundo_cor, font=("Arial", 12), wraplength=250)
-resultado_label.pack(pady=10)
+        self.country_var = tk.StringVar(value=next(iter(COUNTRIES)))
+        self.mission_var = tk.StringVar(value=MISSION_TYPES[0])
+        self.attacker_var = tk.StringVar()
+        self.defender_var = tk.StringVar()
+        self.weather_var = tk.StringVar(value="Clear")
+        self.distance_var = tk.StringVar(value="Long")
+        self.last_result = None
 
-missao_var.trace("w", atualizar_aeronaves)
+        self._build_layout()
+        self._refresh_attacker_list()
+        self._refresh_defender_list()
 
-janela.mainloop()
+        for var in (self.country_var, self.mission_var):
+            var.trace_add("write", lambda *a: self._refresh_attacker_list())
+        self.attacker_var.trace_add("write", lambda *a: self._on_attacker_change())
+        self.defender_var.trace_add("write", lambda *a: self._on_select_change())
+
+    def _setup_style(self):
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("TNotebook", background=BG, borderwidth=0)
+        style.configure("TNotebook.Tab", background=PANEL, foreground=TEXT_DIM, padding=(18, 8), font=(FONT, 10))
+        style.map("TNotebook.Tab", background=[("selected", PANEL_LIGHT)], foreground=[("selected", ACCENT)])
+        style.configure("TCombobox", fieldbackground=PANEL_LIGHT, background=PANEL_LIGHT, foreground=TEXT, arrowcolor=ACCENT, borderwidth=0)
+        style.map("TCombobox", fieldbackground=[("readonly", PANEL_LIGHT)])
+
+    def _build_layout(self):
+        header = tk.Frame(self.root, bg=BG)
+        header.pack(fill="x", padx=24, pady=(18, 6))
+        tk.Label(header, text="AIR COMBAT SIMULATOR", bg=BG, fg=TEXT, font=(FONT, 18, "bold")).pack(side="left")
+        tk.Label(header, text=f"  -  {CSV_PATH.name}  -  {len(AIRCRAFT)} aircraft", bg=BG, fg=TEXT_DIM, font=(FONT, 10)).pack(side="left", pady=(6, 0))
+
+        body = tk.Frame(self.root, bg=BG)
+        body.pack(fill="both", expand=True, padx=24, pady=12)
+        self._build_controls(body)
+        right = tk.Frame(body, bg=BG)
+        right.pack(side="left", fill="both", expand=True, padx=(18, 0))
+        self._build_result_card(right)
+        self._build_tabs(right)
+
+    def _control_combo(self, parent, label, var, values):
+        tk.Label(parent, text=label, bg=PANEL, fg=TEXT_DIM, font=(FONT, 9, "bold")).pack(anchor="w", padx=16, pady=(12, 2))
+        combo = ttk.Combobox(parent, textvariable=var, values=values, state="readonly", font=(FONT, 10), width=26)
+        combo.pack(padx=16, fill="x")
+        return combo
+
+    def _build_controls(self, parent):
+        panel = tk.Frame(parent, bg=PANEL, width=300)
+        panel.pack(side="left", fill="y")
+        panel.pack_propagate(False)
+        tk.Label(panel, text="ENGAGEMENT SETUP", bg=PANEL, fg=ACCENT, font=(FONT, 10, "bold")).pack(anchor="w", padx=16, pady=(16, 4))
+        self._control_combo(panel, "MISSION", self.mission_var, MISSION_TYPES)
+        self._control_combo(panel, "ATTACKER COUNTRY", self.country_var, sorted(COUNTRIES.keys()))
+        self.attacker_combo = self._control_combo(panel, "ATTACKER", self.attacker_var, [])
+        self.defender_combo = self._control_combo(panel, "DEFENDER (enemy)", self.defender_var, sorted(AIRCRAFT.keys()))
+        self._control_combo(panel, "WEATHER", self.weather_var, WEATHER_OPTIONS)
+        self._control_combo(panel, "DISTANCE", self.distance_var, DISTANCE_OPTIONS)
+        btn = tk.Button(panel, text="RUN SIMULATION", bg=ACCENT, fg="#0b0e14", activebackground=ACCENT_DIM, font=(FONT, 11, "bold"), relief="flat", cursor="hand2", command=self.simulate)
+        btn.pack(fill="x", padx=16, pady=20, ipady=8)
+        self.image_label = tk.Label(panel, bg=PANEL, fg=TEXT_DIM, text="(no image)", font=(FONT, 9))
+        self.image_label.pack(pady=(4, 12))
+
+    def _build_result_card(self, parent):
+        card = tk.Frame(parent, bg=PANEL_LIGHT)
+        card.pack(fill="x")
+        self.prob_label = tk.Label(card, text="-", bg=PANEL_LIGHT, fg=ACCENT, font=(FONT, 40, "bold"))
+        self.prob_label.pack(side="left", padx=24, pady=18)
+        info = tk.Frame(card, bg=PANEL_LIGHT)
+        info.pack(side="left", fill="both", expand=True, pady=18)
+        self.result_title = tk.Label(info, text="Awaiting simulation", bg=PANEL_LIGHT, fg=TEXT, font=(FONT, 13, "bold"), anchor="w", justify="left")
+        self.result_title.pack(anchor="w")
+        self.result_detail = tk.Label(info, text="Configure an engagement and press Run.", bg=PANEL_LIGHT, fg=TEXT_DIM, font=(FONT, 10), anchor="w", justify="left", wraplength=520)
+        self.result_detail.pack(anchor="w", pady=(4, 0))
+
+    def _build_tabs(self, parent):
+        self.tabs = ttk.Notebook(parent)
+        self.tabs.pack(fill="both", expand=True, pady=(12, 0))
+        self.fig_breakdown = Figure(figsize=(6, 3.2), dpi=100, facecolor=PANEL)
+        self.fig_radar = Figure(figsize=(6, 3.2), dpi=100, facecolor=PANEL)
+        self.fig_scatter = Figure(figsize=(6, 3.2), dpi=100, facecolor=PANEL)
+        self.canvas_breakdown = self._add_tab(self.fig_breakdown, "Mission Breakdown")
+        self.canvas_radar = self._add_tab(self.fig_radar, "Capability Radar")
+        self.canvas_scatter = self._add_tab(self.fig_scatter, "Cost vs Capability")
+        self._draw_scatter()
+
+    def _add_tab(self, fig, title):
+        frame = tk.Frame(self.tabs, bg=PANEL)
+        self.tabs.add(frame, text=title)
+        canvas = FigureCanvasTkAgg(fig, master=frame)
+        canvas.get_tk_widget().pack(fill="both", expand=True)
+        return canvas
+
+    def _refresh_attacker_list(self):
+        country = self.country_var.get()
+        mission = self.mission_var.get()
+        valid = [a for a in COUNTRIES.get(country, []) if mission in missions_for(a)]
+        self.attacker_combo["values"] = valid
+        if valid:
+            if self.attacker_var.get() not in valid:
+                self.attacker_var.set(valid[0])
+        else:
+            self.attacker_var.set("")
+
+    def _refresh_defender_list(self):
+        self.defender_combo["values"] = sorted(AIRCRAFT.keys())
+        if not self.defender_var.get():
+            self.defender_var.set("J-20 Mighty Dragon" if "J-20 Mighty Dragon" in AIRCRAFT else next(iter(AIRCRAFT)))
+
+    def _on_attacker_change(self):
+        self._update_image()
+        self._on_select_change()
+
+    def _on_select_change(self):
+        if self.attacker_var.get() and self.defender_var.get():
+            self._draw_radar()
+
+    def _update_image(self):
+        name = self.attacker_var.get()
+        if not name:
+            return
+        key = name.lower().replace("-", "").replace(" ", "").replace("/", "")
+        path = IMG_DIR / f"{key}.png"
+        try:
+            img = Image.open(path)
+            img.thumbnail((240, 120), Image.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
+            self.image_label.configure(image=photo, text="")
+            self.image_label.image = photo
+        except Exception:
+            self.image_label.configure(image="", text="(no image)")
+            self.image_label.image = None
+
+    def simulate(self):
+        atk_name = self.attacker_var.get()
+        if not atk_name:
+            self._show_result(None, "No valid attacker", "Pick a mission this aircraft can fly.")
+            return
+        attacker = AIRCRAFT[atk_name]
+        defender = AIRCRAFT[self.defender_var.get()]
+        mission = self.mission_var.get()
+        result = run_mission(attacker, defender, mission, self.weather_var.get(), self.distance_var.get())
+        self.last_result = result
+        final = result["final"]
+        if mission == "Strategic Reconnaissance":
+            detail = f"{atk_name} over contested airspace.  Engagement vs {defender['name']} not modeled for recon."
+        else:
+            detail = f"{atk_name}  vs  {defender['name']}   -   {mission}"
+        self._show_result(final, mission, detail)
+        self._draw_breakdown(result, mission)
+        self._draw_radar()
+
+    def _show_result(self, value, title, detail):
+        if value is None:
+            self.prob_label.config(text="-", fg=TEXT_DIM)
+        else:
+            color = GOOD if value >= 55 else WARN if value >= 25 else BAD
+            self.prob_label.config(text=f"{value:.0f}%", fg=color)
+        self.result_title.config(text=title)
+        self.result_detail.config(text=detail)
+
+    def _style_ax(self, ax, title):
+        ax.set_facecolor(PANEL)
+        ax.set_title(title, color=TEXT, fontsize=11, pad=10)
+        ax.tick_params(colors=TEXT_DIM, labelsize=8)
+        for spine in ax.spines.values():
+            spine.set_color(PANEL_LIGHT)
+
+    def _draw_breakdown(self, result, mission):
+        self.fig_breakdown.clear()
+        ax = self.fig_breakdown.add_subplot(111)
+        self._style_ax(ax, f"{mission} - factor breakdown")
+        factors = {k: v for k, v in result.items() if k != "final"}
+        if not factors:
+            ax.text(0.5, 0.5, "No sub-factors for this mission", color=TEXT_DIM, ha="center", transform=ax.transAxes)
+        else:
+            labels = [k.replace("_", " ").title() for k in factors]
+            values = list(factors.values())
+            colors = [GOOD if v >= 55 else WARN if v >= 25 else BAD for v in values]
+            ax.barh(labels, values, color=colors)
+            ax.set_xlim(0, 100)
+            ax.set_xlabel("%", color=TEXT_DIM)
+            for i, v in enumerate(values):
+                ax.text(v + 1, i, f"{v:.0f}", color=TEXT, va="center", fontsize=8)
+        self.fig_breakdown.tight_layout()
+        self.canvas_breakdown.draw()
+
+    def _draw_radar(self):
+        self.fig_radar.clear()
+        atk_name, def_name = self.attacker_var.get(), self.defender_var.get()
+        if not atk_name or not def_name:
+            return
+        ax = self.fig_radar.add_subplot(111, polar=True)
+        ax.set_facecolor(PANEL)
+        ax.set_title("Capability comparison", color=TEXT, fontsize=11, pad=18)
+        metrics = ["stealth", "maneuver", "radar", "missile", "ew", "speed"]
+        labels = ["Stealth", "Maneuver", "Radar", "Missile", "EW", "Speed"]
+        def vec(ac):
+            return [ac["stealth"], ac["maneuver"], ac["radar"] / 10.0, ac["missile"], ac["ew"], min(1.0, ac["speed"] / 3000.0)]
+        angles = [n / len(metrics) * 2 * math.pi for n in range(len(metrics))]
+        angles += angles[:1]
+        for name, color in [(atk_name, ACCENT), (def_name, BAD)]:
+            v = vec(AIRCRAFT[name]) + vec(AIRCRAFT[name])[:1]
+            ax.plot(angles, v, color=color, linewidth=2, label=name)
+            ax.fill(angles, v, color=color, alpha=0.15)
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(labels, color=TEXT_DIM, fontsize=8)
+        ax.set_yticklabels([])
+        ax.set_ylim(0, 1)
+        ax.legend(loc="upper right", bbox_to_anchor=(1.25, 1.1), facecolor=PANEL, edgecolor=PANEL_LIGHT, labelcolor=TEXT, fontsize=8)
+        self.fig_radar.tight_layout()
+        self.canvas_radar.draw()
+
+    def _draw_scatter(self):
+        self.fig_scatter.clear()
+        ax = self.fig_scatter.add_subplot(111)
+        self._style_ax(ax, "Unit cost vs composite capability")
+        costs, caps, names = [], [], []
+        for ac in AIRCRAFT.values():
+            cap = (ac["stealth"] + ac["maneuver"] + ac["radar"] / 10.0 + ac["missile"] + ac["ew"]) / 5.0
+            costs.append(ac["cost"])
+            caps.append(cap * 100)
+            names.append(ac["name"])
+        gens = [AIRCRAFT[n]["generation"] for n in names]
+        sc = ax.scatter(costs, caps, c=gens, cmap="viridis", s=40, alpha=0.85)
+        ax.set_xlabel("Unit cost (M USD)", color=TEXT_DIM)
+        ax.set_ylabel("Capability index", color=TEXT_DIM)
+        cbar = self.fig_scatter.colorbar(sc, ax=ax)
+        cbar.set_label("Generation", color=TEXT_DIM)
+        cbar.ax.tick_params(colors=TEXT_DIM)
+        self.fig_scatter.tight_layout()
+        self.canvas_scatter.draw()
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SimulatorApp(root)
+    root.mainloop()
