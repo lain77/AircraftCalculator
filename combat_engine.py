@@ -155,7 +155,8 @@ def p_interception(attacker, defender, weather="Clear", distance="Long"):
         (attacker["speed"] - 2200) / 400.0, midpoint=0.0, steepness=2.0
     )
     reach = p_detect_first(attacker, defender)
-    shot = p_valid_shot(attacker, {"Short": 30, "Medium": 80, "Long": 150}[distance])
+    distance_km = {"Short": 30, "Medium": 80, "Long": 150}.get(distance, 150)
+    shot = p_valid_shot(attacker, distance_km)
     kill = (0.4 * speed_edge + 0.6 * reach) * shot * weather_mult
     return {
         "final": round(kill * 100, 1),
