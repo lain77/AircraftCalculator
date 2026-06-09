@@ -35,8 +35,19 @@ RECON_STEALTH_STEEPNESS = 8.0
 # Helpers
 # ---------------------------------------------------------------------------
 def logistic(x, midpoint=0.0, steepness=1.0):
-    """Maps any real number to (0, 1). Never returns exactly 0 or 1."""
-    return 1.0 / (1.0 + math.exp(-steepness * (x - midpoint)))
+    """
+    Maps any real number to [0, 1], overflow-safe.
+
+    For the moderate inputs the engine actually feeds it (log-ratios and
+    stat edges near 0) the result stays in the open interval (0, 1). Only
+    at extreme magnitudes does it saturate to exactly 0.0 or 1.0 instead
+    of raising OverflowError.
+    """
+    z = steepness * (x - midpoint)
+    if z >= 0:
+        return 1.0 / (1.0 + math.exp(-z))
+    ez = math.exp(z)
+    return ez / (1.0 + ez)
 
 
 def parse_generation(value):
